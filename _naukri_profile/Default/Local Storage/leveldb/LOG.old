@@ -1,0 +1,8 @@
+2026/08/03-15:21:28.924 6bac Reusing MANIFEST D:\New folder (3)\Naukri.com-Job-Listings-Scraper-Python-main\job-scout-main\_naukri_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/08/03-15:21:28.933 6bac Recovering log #4
+2026/08/03-15:21:28.935 6bac Level-0 table #7: started
+2026/08/03-15:21:28.943 6bac Level-0 table #7: 12935 bytes OK
+2026/08/03-15:21:28.945 6bac Recovering log #7
+2026/08/03-15:21:28.947 6bac Reusing old log D:\New folder (3)\Naukri.com-Job-Listings-Scraper-Python-main\job-scout-main\_naukri_profile\Default\Local Storage\leveldb/000007.log 
+2026/08/03-15:21:28.948 6bac Delete type=0 #4
+2026/08/03-15:21:28.948 6bac Delete type=2 #8

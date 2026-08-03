@@ -1,0 +1,9 @@
+2026/08/03-15:22:40.430 6bf0 Reusing MANIFEST D:\New folder (3)\Naukri.com-Job-Listings-Scraper-Python-main\job-scout-main\_naukri_profile\Default\IndexedDB\https_www.naukri.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/08/03-15:22:40.431 6bf0 Recovering log #7
+2026/08/03-15:22:40.433 6bf0 Reusing old log D:\New folder (3)\Naukri.com-Job-Listings-Scraper-Python-main\job-scout-main\_naukri_profile\Default\IndexedDB\https_www.naukri.com_0.indexeddb.leveldb/000007.log 
+2026/08/03-15:22:58.234 6bf0 Compacting 1@1 + 1@2 files
+2026/08/03-15:22:58.245 6bf0 Generated table #10@1: 87 keys, 46405 bytes
+2026/08/03-15:22:58.246 6bf0 Compacted 1@1 + 1@2 files => 46405 bytes
+2026/08/03-15:22:58.246 6bf0 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/08/03-15:22:58.246 6bf0 Delete type=2 #5
+2026/08/03-15:22:58.247 6bf0 Delete type=2 #8

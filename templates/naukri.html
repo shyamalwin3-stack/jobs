@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naukri Job Finder</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    /* Naukri — blue/teal */
+    body.naukri { --primary: #0079c1; --primary-soft: #d8ecfb; --accent: #0079c1; --accent-soft: #d8ecfb; }
+    body.naukri .search-btn { background: linear-gradient(125deg, #0079c1, #4aa9e0); box-shadow: 0 10px 26px rgba(0, 121, 193, 0.32); }
+    body.naukri .apply { background: linear-gradient(125deg, #0079c1, #4aa9e0); }
+    .skills-row { margin-top: 6px; font-size: 11px; color: var(--subtext); }
+    .skill-pill { display: inline-block; background: var(--panel-soft); border: 1px solid var(--line); padding: 2px 7px; border-radius: 999px; margin-right: 4px; margin-bottom: 3px; font-weight: 600; }
+    .desc-row { margin-top: 4px; font-size: 12px; color: var(--subtext); line-height: 1.4; }
+    .rating-badge { background: linear-gradient(90deg, #ffb800, #ff9800); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+  </style>
+</head>
+<body class="naukri">
+  <div class="shell">
+    <aside class="panel sidebar">
+      <div class="header">
+        <div class="brand-row">
+          <div class="brand">Naukri<span class="accent-blue">Scout</span></div>
+          <div style="display:flex;gap:6px;">
+            <a class="back-link" href="/">← Home</a>
+            <button class="theme-btn" id="themeBtn" type="button" onclick="toggleTheme()">Dark Mode</button>
+          </div>
+        </div>
+        <div class="tagline">Naukri job search — relevance-sorted with freshness filter.</div>
+      </div>
+
+      <div class="form-body">
+        <div class="block">
+          <label class="label" for="role">Job Role / Keywords</label>
+          <input id="role" type="text" placeholder="devops engineer, python, backend..." value="devops engineer" />
+        </div>
+
+        <div class="block">
+          <label class="label" for="city">Location</label>
+          <select id="city">
+            {% for city in cities %}
+            <option value="{{ city }}" {% if city == 'Bengaluru' %}selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="block">
+          <label class="label" for="experience">Experience</label>
+          <select id="experience">
+            <option value="" selected>Any</option>
+            <option value="0">0 Yrs (Fresher)</option>
+            <option value="1">1 Yr</option>
+            <option value="2">2 Yrs</option>
+            <option value="3">3 Yrs</option>
+            <option value="4">4 Yrs</option>
+            <option value="5">5 Yrs</option>
+            <option value="7">7 Yrs</option>
+            <option value="10">10 Yrs</option>
+            <option value="15">15 Yrs</option>
+          </select>
+        </div>
+
+        <!-- Results/limit control removed — returns all recent jobs (last 24 hours) -->
+      </div>
+
+      <div class="foot">
+        <button id="searchBtn" class="search-btn" type="button" onclick="searchJobs()">Search Jobs</button>
+        <div id="statusMsg" class="status"></div>
+      </div>
+    </aside>
+
+    <main class="panel main">
+      <div class="topbar">
+        <div>
+          <div class="title" id="tbTitle">Naukri Job Finder</div>
+          <div class="subtitle" id="tbSub">Enter a keyword and pick a location to search.</div>
+        </div>
+        <div class="stats" id="statsWrap" style="display:none;">
+          <div class="stat" id="statCount">0 jobs</div>
+          <div class="stat" id="statLoc">0 locations</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="toolbar" id="toolbar">
+          <select id="sortSelect" onchange="setSort(this.value)" style="margin-left: auto; max-width: 190px;">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="title">Job Title (A-Z)</option>
+            <option value="company">Company (A-Z)</option>
+            <option value="score">Match Score</option>
+          </select>
+          <button id="dlBtn" class="download-btn" type="button" onclick="downloadExcel()" disabled>Download Excel</button>
+          <button id="copyLinksBtn" class="secondary-btn" type="button" onclick="copyJobLinks()" disabled>📋 Copy Links</button>
+          <button id="dlAllBtn" class="download-btn" type="button" onclick="downloadAllRoles()" disabled style="display:none; margin-left: 10px;">Download All Roles</button>
+        </div>
+        <div id="queueSummary" class="queue-summary" style="display:none;"></div>
+
+        <section id="stWelcome" class="state">
+          <h2>Naukri.com Job Search</h2>
+          <p>Combines Naukri's relevance ranking with a freshness window for the best results. Drop the experience filter for the widest net, or set it to match your target role.</p>
+        </section>
+
+        <section id="stLoading" class="state" style="display:none;">
+          <div class="loading"></div>
+          <h2>Searching Naukri</h2>
+          <p>Establishing browser session (slower the first time). Subsequent searches reuse the cached profile.</p>
+        </section>
+
+        <section id="stEmpty" class="state" style="display:none;">
+          <h2>No Matching Jobs</h2>
+          <p>Try a broader keyword, wider posted-age, or drop the experience filter.</p>
+        </section>
+
+        <div class="jobs" id="jobs"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const AGE_LABELS = { "1": "1 day", "3": "3 days", "7": "7 days", "15": "15 days", "30": "30 days" };
+    const PORTAL = "naukri";
+
+    let allJobs = [];
+    let currentSort = "date-desc";
+    let roleQueue = [];
+    let queueIndex = 0;
+    let groupedResults = [];
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function setStatus(message, cls = "") {
+      const el = document.getElementById("statusMsg");
+      el.textContent = message;
+      el.className = `status ${cls}`;
+    }
+
+    function showOnly(id) {
+      ["stWelcome", "stLoading", "stEmpty"].forEach((s) => {
+        document.getElementById(s).style.display = s === id ? "block" : "none";
+      });
+    }
+
+    function updateThemeButton() {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.getElementById("themeBtn").textContent = dark ? "Light Mode" : "Dark Mode";
+    }
+    function toggleTheme() {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      localStorage.setItem("jobscout_theme", next);
+      updateThemeButton();
+    }
+    (function initTheme() {
+      const saved = localStorage.getItem("jobscout_theme");
+      if (saved === "dark" || saved === "light") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+      updateThemeButton();
+    })();
+
+    function scoreJobsIfResume(jobs) {
+      const resumeRaw = sessionStorage.getItem("resumeData");
+      if (!resumeRaw || !jobs.length) return Promise.resolve(jobs);
+      setStatus("Scoring jobs against your resume...");
+      return fetch("/score-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: JSON.parse(resumeRaw), jobs }),
+      })
+        .then((res) => res.json())
+        .then((data) => (data.error ? jobs : data.jobs))
+        .catch(() => jobs);
+    }
+
+    function setSort(value) { currentSort = value; if (groupedResults.length) renderGroupedJobs(); else renderJobs(); }
+
+
+    function renderJobCard(job, index) {
+      const card = document.createElement("article");
+      card.className = "job";
+      card.style.animationDelay = `${Math.min(index * 22, 220)}ms`;
+      const skills = (job.Skills || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6);
+      const skillsHtml = skills.length
+        ? `<div class="skills-row">${skills.map((s) => `<span class="skill-pill">${escapeHtml(s)}</span>`).join("")}</div>`
+        : "";
+      const ratingHtml = job.Rating
+        ? `<span class="rating-badge">★ ${escapeHtml(job.Rating)}</span>`
+        : "";
+      const descHtml = job.Description
+        ? `<div class="desc-row">${escapeHtml(job.Description)}</div>`
+        : "";
+      const scoreHtml = job.MatchScore != null
+        ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${escapeHtml(job.MatchScore)}% match</span>`
+        : "";
+      card.innerHTML = `
+          <div>
+            <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+            <div class="job-company">${escapeHtml(job.Company || "N/A")}${ratingHtml}</div>
+            <div class="meta">
+              <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+              ${job.Experience ? `<span class="badge">${escapeHtml(job.Experience)}</span>` : ""}
+              ${job.Salary ? `<span class="badge">${escapeHtml(job.Salary)}</span>` : ""}
+              <span class="badge">Posted ${escapeHtml(job.Posted || "N/A")}</span>
+              ${scoreHtml}
+            </div>
+            ${descHtml}
+            ${skillsHtml}
+          </div>
+          <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Apply</a>
+        `;
+      return card;
+    }
+
+    function renderGroupedJobs() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      if (!groupedResults.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No jobs have been grouped yet.</h2><p>Run a suggested role queue to see role-based groups.</p></section>";
+        return;
+      }
+
+      groupedResults.forEach((group) => {
+        const groupNode = document.createElement("div");
+        groupNode.className = "role-group";
+        const header = document.createElement("div");
+        header.className = "role-group-header";
+        const title = document.createElement("h3");
+        title.textContent = `${group.role} — ${group.jobs.length} job(s)`;
+        const stats = document.createElement("div");
+        stats.className = "role-group-stats";
+        stats.textContent = `Sorted by ${currentSort.replace("-", " ")}.`;
+        header.appendChild(title);
+        header.appendChild(stats);
+        groupNode.appendChild(header);
+
+        if (!group.jobs.length) {
+          const emptyState = document.createElement("section");
+          emptyState.className = "state";
+          emptyState.innerHTML = "<h2>No jobs found for this role.</h2><p>Try a broader keyword or different experience filter.</p>";
+          groupNode.appendChild(emptyState);
+        } else {
+          const sortedJobs = [...group.jobs];
+          switch (currentSort) {
+            case "date-asc": sortedJobs.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+            case "title": sortedJobs.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+            case "company": sortedJobs.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+            case "score": sortedJobs.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+            case "date-desc":
+            default: sortedJobs.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+          }
+          sortedJobs.forEach((job, index) => {
+            groupNode.appendChild(renderJobCard(job, index));
+          });
+        }
+
+        jobsWrap.appendChild(groupNode);
+      });
+    }
+
+    function renderJobs() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      let filtered = [...allJobs];
+
+      switch (currentSort) {
+        case "date-asc": filtered.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+        case "title": filtered.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+        case "company": filtered.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+        case "score": filtered.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+        case "date-desc":
+        default: filtered.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+      }
+
+      if (!filtered.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No Jobs For This View</h2><p>Try a broader search.</p></section>";
+        return;
+      }
+
+      filtered.forEach((job, index) => {
+        const posted = job.Posted || "N/A";
+        const delay = Math.min(index * 22, 220);
+        const card = document.createElement("article");
+        card.className = "job";
+        card.style.animationDelay = `${delay}ms`;
+        const skills = (job.Skills || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 6);
+        const skillsHtml = skills.length
+          ? `<div class="skills-row">${skills.map(s => `<span class="skill-pill">${escapeHtml(s)}</span>`).join("")}</div>`
+          : "";
+        const ratingHtml = job.Rating
+          ? `<span class="rating-badge">★ ${escapeHtml(job.Rating)}</span>`
+          : "";
+        const descHtml = job.Description
+          ? `<div class="desc-row">${escapeHtml(job.Description)}</div>`
+          : "";
+        const scoreHtml = (job.MatchScore != null)
+          ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${escapeHtml(job.MatchScore)}% match</span>`
+          : "";
+        card.innerHTML = `
+          <div>
+            <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+            <div class="job-company">${escapeHtml(job.Company || "N/A")}${ratingHtml}</div>
+            <div class="meta">
+              <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+              ${job.Experience ? `<span class="badge">${escapeHtml(job.Experience)}</span>` : ""}
+              ${job.Salary ? `<span class="badge">${escapeHtml(job.Salary)}</span>` : ""}
+              <span class="badge">Posted ${escapeHtml(posted)}</span>
+              ${scoreHtml}
+            </div>
+            ${descHtml}
+            ${skillsHtml}
+          </div>
+          <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Apply</a>
+        `;
+        jobsWrap.appendChild(card);
+      });
+    }
+
+    function renderRoleGroups() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      if (!groupedResults.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No jobs have been grouped yet.</h2><p>Run a search or upload your resume to see suggested roles.</p></section>";
+        return;
+      }
+
+      groupedResults.forEach((group) => {
+        const groupNode = document.createElement("div");
+        groupNode.className = "role-group";
+        const header = document.createElement("div");
+        header.className = "role-group-header";
+        const title = document.createElement("h3");
+        title.textContent = `${group.role} — ${group.jobs.length} job(s)`;
+        const stats = document.createElement("div");
+        stats.className = "role-group-stats";
+        stats.textContent = `Sorted by ${currentSort.replace("-", " ")}.`;
+        header.appendChild(title);
+        header.appendChild(stats);
+        groupNode.appendChild(header);
+
+        if (!group.jobs.length) {
+          const emptyState = document.createElement("section");
+          emptyState.className = "state";
+          emptyState.innerHTML = "<h2>No jobs found for this role.</h2><p>Try a broader keyword or different filters.</p>";
+          groupNode.appendChild(emptyState);
+        } else {
+          const sortedJobs = [...group.jobs];
+          switch (currentSort) {
+            case "date-asc": sortedJobs.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+            case "title": sortedJobs.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+            case "company": sortedJobs.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+            case "score": sortedJobs.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+            case "date-desc":
+            default: sortedJobs.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+          }
+          sortedJobs.forEach((job, index) => {
+            groupNode.appendChild(renderJobCard(job, index));
+          });
+        }
+        jobsWrap.appendChild(groupNode);
+      });
+    }
+
+    function searchJobs(roleOverride, isQueued = false) {
+      const role = roleOverride || document.getElementById("role").value.trim();
+      const city = document.getElementById("city").value;
+      const experience = document.getElementById("experience").value;
+
+      if (!role) { setStatus("Enter a job role.", "err"); return; }
+
+      if (!isQueued) {
+        const titles = getSuggestedRoles();
+        if (titles.length) {
+          runFullRoleQueue(titles);
+          return;
+        }
+      }
+
+      showOnly("stLoading");
+      document.getElementById("jobs").innerHTML = "";
+      document.getElementById("toolbar").style.display = "none";
+      document.getElementById("statsWrap").style.display = "none";
+      document.getElementById("searchBtn").disabled = true;
+      document.getElementById("dlBtn").disabled = true;
+      document.getElementById("copyLinksBtn").disabled = true;
+      document.getElementById("tbTitle").textContent = "Searching...";
+      document.getElementById("tbSub").textContent = `${role} in ${city} | last 24 hours`;
+      setStatus("");
+
+      const params = new URLSearchParams({ role, city });
+      if (experience) params.set("experience", experience);
+
+      fetch(`/search/${PORTAL}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!isQueued) document.getElementById("searchBtn").disabled = false;
+
+          if (data.error) {
+            if (isQueued) {
+              groupedResults.push({ role, jobs: [] });
+              renderRoleGroups();
+              queueIndex += 1;
+              setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+              return;
+            }
+            showOnly("stWelcome");
+            document.getElementById("tbTitle").textContent = "Naukri Job Finder";
+            document.getElementById("tbSub").textContent = "Enter a keyword and pick a location to search.";
+            setStatus(data.error, "err");
+            return;
+          }
+
+          let roleJobs = data.jobs || [];
+          if (isQueued) {
+            const uniqueJobs = [];
+            for (const job of roleJobs) {
+              const key = jobDedupKey(job);
+              if (seenJobKeys.has(key)) continue;
+              seenJobKeys.add(key);
+              job["Suggested Role"] = role;
+              uniqueJobs.push(job);
+            }
+            roleJobs = uniqueJobs;
+          }
+
+          scoreJobsIfResume(roleJobs).then((scoredJobs) => {
+            if (isQueued) {
+              groupedResults.push({ role, jobs: scoredJobs });
+              renderRoleGroups();
+              queueIndex += 1;
+              setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+              return;
+            }
+
+            allJobs = scoredJobs;
+            groupedResults = [];
+            setQueueSummary("", false);
+            document.getElementById("dlAllBtn").style.display = "none";
+            document.getElementById("dlAllBtn").disabled = true;
+            currentSort = "date-desc";
+            document.getElementById("sortSelect").value = "date-desc";
+
+            document.getElementById("tbTitle").textContent = role;
+            document.getElementById("tbSub").textContent = `${allJobs.length} job(s) in ${city} | last 24 hours`;
+            document.getElementById("statCount").textContent = `${allJobs.length} jobs`;
+            document.getElementById("statLoc").textContent = city;
+            document.getElementById("statsWrap").style.display = "flex";
+
+            if (!allJobs.length) {
+              showOnly("stEmpty");
+              setStatus("No jobs found.", "warn");
+              return;
+            }
+
+            allJobs = scoredJobs;
+            showOnly("");
+            document.getElementById("toolbar").style.display = "flex";
+            document.getElementById("dlBtn").disabled = false;
+            document.getElementById("copyLinksBtn").disabled = false;
+            renderJobs();
+
+            setStatus(`Found ${allJobs.length} jobs.`, "ok");
+          });
+        })
+        .catch(() => {
+          if (isQueued) {
+            groupedResults.push({ role, jobs: [] });
+            renderRoleGroups();
+            queueIndex += 1;
+            setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+            return;
+          }
+          document.getElementById("searchBtn").disabled = false;
+          showOnly("stWelcome");
+          document.getElementById("tbTitle").textContent = "Naukri Job Finder";
+          document.getElementById("tbSub").textContent = "Enter a keyword and pick a location to search.";
+          setStatus("Network error. Ensure Flask server is running.", "err");
+        });
+    }
+
+    function downloadExcel() { window.location = `/download/${PORTAL}`; }
+
+    function copyJobLinks() {
+      const queuedJobs = (typeof resultsByRole !== "undefined" && Object.keys(resultsByRole).length)
+        ? Object.values(resultsByRole).flatMap((r) => r.jobs)
+        : [];
+      const source = queuedJobs.length ? queuedJobs : (typeof allJobs !== "undefined" ? allJobs : []);
+      if (!source.length) {
+        setStatus("No jobs to copy yet — run a search first.", "err");
+        return;
+      }
+      const text = source
+        .map((job, i) => `${i + 1}) ${job.Link || job.Url || "N/A"}`)
+        .join("\n");
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus(`Copied ${source.length} job link(s) to clipboard.`, "ok"))
+        .catch(() => setStatus("Could not copy — clipboard permission denied.", "err"));
+    }
+
+    function setQueueSummary(message, show = true) {
+      const el = document.getElementById("queueSummary");
+      el.textContent = message;
+      el.style.display = show ? "block" : "none";
+    }
+
+    function downloadAllRoles() {
+      const combined = groupedResults.flatMap((group) => group.jobs.map((job) => ({ ...job, "Suggested Role": group.role })));
+      if (!combined.length) {
+        setStatus("No grouped role jobs available to download.", "warn");
+        return;
+      }
+      document.getElementById("dlAllBtn").disabled = true;
+      setStatus("Preparing combined Excel download...", "");
+
+      fetch("/download-combined", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobs: combined }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Download failed");
+          return res.blob();
+        })
+        .then((blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "jobs_combined.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          setStatus(`Combined download ready (${combined.length} jobs).`, "ok");
+        })
+        .catch(() => {
+          setStatus("Failed to download combined jobs. Try again.", "err");
+        })
+        .finally(() => {
+          document.getElementById("dlAllBtn").disabled = false;
+        });
+    }
+
+    let seenJobKeys = new Set();
+    const ROLE_QUEUE_DELAY_MS = 700;
+
+    function getSuggestedRoles() {
+      try {
+        const raw = sessionStorage.getItem("resumeData");
+        if (!raw) return [];
+        const resume = JSON.parse(raw);
+        return Array.isArray(resume.suggested_job_titles) ? resume.suggested_job_titles.filter(Boolean) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function jobDedupKey(job) {
+      const link = (job.Link || "").trim().toLowerCase();
+      if (link) return `link:${link}`;
+      const company = (job.Company || "").trim().toLowerCase();
+      const title = (job["Job Title"] || "").trim().toLowerCase();
+      return `ct:${company}::${title}`;
+    }
+
+    function runFullRoleQueue(titles) {
+      roleQueue = [...titles];
+      queueIndex = 0;
+      groupedResults = [];
+      seenJobKeys = new Set();
+      document.getElementById("searchBtn").disabled = true;
+      document.getElementById("dlBtn").disabled = true;
+      document.getElementById("dlAllBtn").disabled = true;
+      document.getElementById("toolbar").style.display = "flex";
+      setQueueSummary(`Searching ${titles.length} suggested roles — starting with ${titles[0]}...`);
+      document.getElementById("tbTitle").textContent = `Suggested roles search`;
+      document.getElementById("tbSub").textContent = `${titles.length} role(s) queued`;
+      document.getElementById("statsWrap").style.display = "flex";
+      document.getElementById("statCount").textContent = `${titles.length} role searches`;
+      document.getElementById("statLoc").textContent = document.getElementById("city").value;
+      runNextRoleInQueue();
+    }
+
+    function runNextRoleInQueue() {
+      if (queueIndex >= roleQueue.length) {
+        finishRoleQueue();
+        return;
+      }
+      const roleName = roleQueue[queueIndex];
+      document.getElementById("role").value = roleName;
+      setStatus(`Searching role ${queueIndex + 1} of ${roleQueue.length}: ${roleName}...`, "");
+      searchJobs(roleName, true);
+    }
+
+    function finishRoleQueue() {
+      setStatus(`Completed ${groupedResults.length} role searches.`, "ok");
+      setQueueSummary(`Finished searching ${groupedResults.length} suggested roles.`);
+      document.getElementById("searchBtn").disabled = false;
+      document.getElementById("dlBtn").disabled = false;
+      const dlAllBtn = document.getElementById("dlAllBtn");
+      dlAllBtn.disabled = groupedResults.length === 0;
+      dlAllBtn.style.display = groupedResults.length ? "inline-flex" : "none";
+      if (!groupedResults.length) {
+        document.getElementById("jobs").innerHTML = "<section class='state'><h2>No jobs were found.</h2><p>Try a broader search or different filters.</p></section>";
+      }
+    }
+
+    (function autofillFromResume() {
+      const raw = sessionStorage.getItem("resumeData");
+      if (!raw) return;
+      try {
+        const resume = JSON.parse(raw);
+        const titles = resume.suggested_job_titles || [];
+        if (!titles.length) return;
+        const roleInput = document.getElementById("role");
+        if (roleInput) roleInput.value = titles[0];
+        if (titles.length > 1 && roleInput) {
+          const chipRow = document.createElement("div");
+          chipRow.className = "suggested-titles";
+          chipRow.innerHTML = titles.map((t) => `<span class="title-chip" onclick="document.getElementById('role').value='${t.replace(/'/g, "\\'")}'">${t}</span>`).join("");
+          roleInput.closest(".block").appendChild(chipRow);
+        }
+        // Autofill experience filter from resume if available
+        try { autofillExperienceFromResume(resume); } catch (e) {}
+      } catch (e) {}
+    })();
+
+    function autofillExperienceFromResume(resume) {
+          function parseResumeDate(text) {
+            if (!text) return null;
+            const raw = String(text).trim();
+            const normalized = raw.replace(/\(.*\)/, "").trim();
+            const t = normalized.toLowerCase();
+            if (["present", "current", "ongoing", "now", "till date", "to date"].includes(t)) return new Date();
+            const monthYearMatch = normalized.match(/^[A-Za-z]+\s+\d{4}$/);
+            if (monthYearMatch) {
+              const parsed = new Date(`1 ${normalized}`);
+              if (!isNaN(parsed.getTime())) return parsed;
+            }
+            const parsed = new Date(normalized);
+            if (!isNaN(parsed.getTime())) return parsed;
+            const slashMatch = normalized.match(/^(\d{1,2})[\/\-](\d{4})$/);
+            if (slashMatch) {
+              const [_, month, year] = slashMatch;
+              const parsed = new Date(`${month}/01/${year}`);
+              return isNaN(parsed.getTime()) ? null : parsed;
+            }
+            return null;
+          }
+
+          function computeExperienceYearsClientSide(res) {
+            if (res == null) return null;
+            if (res.computed_experience_years != null) return res.computed_experience_years;
+            const experience = Array.isArray(res.experience) ? res.experience : [];
+            let totalDays = 0;
+            let parsedAny = false;
+            for (const exp of experience) {
+              const start = parseResumeDate(exp.start_date || exp.start || exp.from);
+              const end = parseResumeDate(exp.end_date || exp.end || exp.to) || new Date();
+              if (start && end && end > start) {
+                totalDays += (end - start) / (1000 * 60 * 60 * 24);
+                parsedAny = true;
+              }
+            }
+            return parsedAny ? Math.round((totalDays / 365.25) * 10) / 10 : null;
+          }
+
+          const years = computeExperienceYearsClientSide(resume);
+          if (years == null) {
+            console.warn("Could not determine candidate experience — leaving Experience filter on default.");
+            return;
+          }
+          const expSelect = document.getElementById("experience");
+          if (!expSelect) return;
+          let bestOption = null;
+          let bestDiff = Infinity;
+          for (const opt of expSelect.options) {
+            const val = parseFloat(opt.value);
+            if (isNaN(val)) continue;
+            if (val <= years + 0.5) {
+              const diff = Math.abs(years - val);
+              if (diff < bestDiff) {
+                bestDiff = diff;
+                bestOption = opt;
+              }
+            }
+          }
+          if (bestOption) expSelect.value = bestOption.value;
+    }
+
+    document.getElementById("role").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchJobs();
+    });
+  </script>
+</body>
+</html>

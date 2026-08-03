@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hirist Tech Job Finder</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    /* Hirist branding — orange */
+    body.hirist { --primary: #f5701c; --primary-soft: #ffe2cc; --accent: #f5701c; --accent-soft: #ffe2cc; }
+    body.hirist .search-btn { background: linear-gradient(125deg, #f5701c, #ff9a52); box-shadow: 0 10px 26px rgba(245, 112, 28, 0.32); }
+    body.hirist .apply { background: linear-gradient(125deg, #f5701c, #ff9a52); }
+    .skills-row { margin-top: 6px; font-size: 11px; color: var(--subtext); }
+    .skill-pill { display: inline-block; background: var(--panel-soft); border: 1px solid var(--line); padding: 2px 7px; border-radius: 999px; margin-right: 4px; margin-bottom: 3px; font-weight: 600; }
+  </style>
+</head>
+<body class="hirist">
+  <div class="shell">
+    <aside class="panel sidebar">
+      <div class="header">
+        <div class="brand-row">
+          <div class="brand">Hirist<span class="accent-green">Scout</span></div>
+          <div style="display:flex;gap:6px;">
+            <a class="back-link" href="/">← Home</a>
+            <button class="theme-btn" id="themeBtn" type="button" onclick="toggleTheme()">Dark Mode</button>
+          </div>
+        </div>
+        <div class="tagline">Hirist Tech category-based search — no login required.</div>
+      </div>
+
+      <div class="form-body">
+        <div class="block">
+          <label class="label" for="category">Job Category</label>
+          <select id="category">
+            {% for slug, label in categories.items() %}
+            <option value="{{ slug }}" {% if slug == 'devops-sre-jobs' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="block">
+          <label class="label" for="city">Location</label>
+          <select id="city">
+            {% for city in cities %}
+            <option value="{{ city }}" {% if city == 'Bengaluru' %}selected{% endif %}>{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="block">
+          <div class="grid2" style="margin-bottom:8px;">
+            <div>
+              <label class="label" for="experience">Experience</label>
+              <select id="experience">
+                <option value="any" selected>Any</option>
+                <option value="0-1">0 - 1 yrs</option>
+                <option value="2-3">2 - 3 yrs</option>
+                <option value="4-6">4 - 6 yrs</option>
+                <option value="7-10">7 - 10 yrs</option>
+                <option value="10+">10+ yrs</option>
+              </select>
+            </div>
+          </div>
+          <!-- Results limit removed — returns all recent jobs (last 24 hours) -->
+        </div>
+      </div>
+
+      <div class="foot">
+        <button id="searchBtn" class="search-btn" type="button" onclick="searchJobs()">Search Jobs</button>
+        <div id="statusMsg" class="status"></div>
+      </div>
+    </aside>
+
+    <main class="panel main">
+      <div class="topbar">
+        <div>
+          <div class="title" id="tbTitle">Hirist Tech Job Finder</div>
+          <div class="subtitle" id="tbSub">Pick a category and location to begin.</div>
+        </div>
+        <div class="stats" id="statsWrap" style="display:none;">
+          <div class="stat" id="statCount">0 jobs</div>
+          <div class="stat" id="statLoc">0 locations</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="toolbar" id="toolbar">
+          <select id="sortSelect" onchange="setSort(this.value)" style="margin-left: auto; max-width: 190px;">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="title">Job Title (A-Z)</option>
+            <option value="company">Company (A-Z)</option>
+            <option value="score">Match Score</option>
+          </select>
+          <button id="dlBtn" class="download-btn" type="button" onclick="downloadExcel()" disabled>Download Excel</button>
+          <button id="copyLinksBtn" class="secondary-btn" type="button" onclick="copyJobLinks()" disabled>📋 Copy Links</button>
+        </div>
+
+        <section id="stWelcome" class="state">
+          <h2>Find Better Hirist Leads</h2>
+          <p>Pick category, location, experience and posted-age. Hirist is a centralized apply portal so all roles open Hirist's apply page.</p>
+        </section>
+
+        <section id="stLoading" class="state" style="display:none;">
+          <div class="loading"></div>
+          <h2>Searching Hirist Tech</h2>
+          <p>Launching browser automation and collecting recent openings.</p>
+        </section>
+
+        <section id="stEmpty" class="state" style="display:none;">
+          <h2>No Matching Jobs</h2>
+          <p>Try a different category, location, experience or wider posted-age.</p>
+        </section>
+
+        <div class="jobs" id="jobs"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const PORTAL = "hirist";
+
+    let allJobs = [];
+    let currentSort = "date-desc";
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function setStatus(message, cls = "") {
+      const el = document.getElementById("statusMsg");
+      el.textContent = message;
+      el.className = `status ${cls}`;
+    }
+
+    function showOnly(id) {
+      ["stWelcome", "stLoading", "stEmpty"].forEach((s) => {
+        document.getElementById(s).style.display = s === id ? "block" : "none";
+      });
+    }
+
+    function updateThemeButton() {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.getElementById("themeBtn").textContent = dark ? "Light Mode" : "Dark Mode";
+    }
+    function toggleTheme() {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      localStorage.setItem("jobscout_theme", next);
+      updateThemeButton();
+    }
+    (function initTheme() {
+      const saved = localStorage.getItem("jobscout_theme");
+      if (saved === "dark" || saved === "light") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+      updateThemeButton();
+    })();
+
+    function scoreJobsIfResume(jobs) {
+      const resumeRaw = sessionStorage.getItem("resumeData");
+      if (!resumeRaw || !jobs.length) return Promise.resolve(jobs);
+      setStatus("Scoring jobs against your resume...");
+      return fetch("/score-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: JSON.parse(resumeRaw), jobs }),
+      })
+        .then((res) => res.json())
+        .then((data) => (data.error ? jobs : data.jobs))
+        .catch(() => jobs);
+    }
+
+    function setSort(value) { currentSort = value; if (roleOrder.length) renderRoleGroups(); else renderJobs(); }
+
+    let roleQueue = [];
+    let roleQueueIndex = 0;
+    let resultsByRole = {};
+    let roleOrder = [];
+    let seenJobKeys = new Set();
+    const ROLE_QUEUE_DELAY_MS = 700;
+
+    function getSuggestedRoles() {
+      try {
+        const raw = sessionStorage.getItem("resumeData");
+        if (!raw) return [];
+        const resume = JSON.parse(raw);
+        return Array.isArray(resume.suggested_job_titles) ? resume.suggested_job_titles.filter(Boolean) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function jobDedupKey(job) {
+      const link = (job.Link || "").trim().toLowerCase();
+      if (link) return `link:${link}`;
+      const company = (job.Company || "").trim().toLowerCase();
+      const title = (job["Job Title"] || "").trim().toLowerCase();
+      return `ct:${company}::${title}`;
+    }
+
+    function runFullRoleQueue(titles) {
+      roleQueue = [...titles];
+      roleQueueIndex = 0;
+      resultsByRole = {};
+      roleOrder = [];
+      seenJobKeys = new Set();
+      document.getElementById("jobs").innerHTML = "";
+      document.getElementById("toolbar").style.display = "none";
+      document.getElementById("statsWrap").style.display = "none";
+      document.getElementById("searchBtn").disabled = true;
+      document.getElementById("dlBtn").disabled = true;
+      renderRoleGroups();
+      runNextRoleInQueue();
+    }
+
+    function runNextRoleInQueue() {
+      if (roleQueueIndex >= roleQueue.length) {
+        finishRoleQueue();
+        return;
+      }
+      const role = roleQueue[roleQueueIndex];
+      document.getElementById("category").value = role;
+      setStatus(`Searching "${role}" (${roleQueueIndex + 1} of ${roleQueue.length})...`, "");
+      searchJobs(role, true);
+    }
+
+    function finishRoleQueue() {
+      document.getElementById("searchBtn").disabled = false;
+      const totalJobs = Object.values(resultsByRole).reduce((sum, group) => sum + ((group.jobs || []).length), 0);
+      renderSummaryBar(roleOrder.length, totalJobs);
+      setStatus(`Done — ${roleOrder.length} roles searched, ${totalJobs} unique jobs.`, "ok");
+    }
+
+    function renderSummaryBar(roleCount, totalJobs) {
+      let bar = document.getElementById("queueSummary");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "queueSummary";
+        bar.className = "queue-summary";
+        const content = document.querySelector(".content");
+        if (content) content.insertBefore(bar, document.getElementById("jobs"));
+      }
+      bar.textContent = `${roleCount} roles searched · ${totalJobs} unique jobs · last 24 hours`;
+    }
+
+    function renderRoleGroups() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      if (!roleOrder.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No jobs have been grouped yet.</h2><p>Run Search to collect suggested roles.</p></section>";
+        return;
+      }
+      roleOrder.forEach((role, index) => {
+        const groupData = resultsByRole[role] || { jobs: [] };
+        const groupNode = document.createElement("div");
+        groupNode.className = "role-group";
+        const header = document.createElement("div");
+        header.className = "role-group-header";
+        const title = document.createElement("h3");
+        title.textContent = `${role} — ${groupData.jobs.length} job(s)`;
+        const stats = document.createElement("div");
+        stats.className = "role-group-stats";
+        stats.textContent = `Role ${index + 1} of ${roleQueue.length}`;
+        header.appendChild(title);
+        header.appendChild(stats);
+        groupNode.appendChild(header);
+
+        if (!groupData.jobs.length) {
+          const emptyState = document.createElement("section");
+          emptyState.className = "state";
+          emptyState.innerHTML = "<h2>No jobs found for this role.</h2><p>Try a broader keyword or different filters.</p>";
+          groupNode.appendChild(emptyState);
+        } else {
+          groupData.jobs.forEach((job, jobIndex) => {
+            const card = document.createElement("article");
+            card.className = "job";
+            card.style.animationDelay = `${Math.min(jobIndex * 22, 220)}ms`;
+            const scoreHtml = job.MatchScore != null
+              ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${escapeHtml(job.MatchScore)}% match</span>`
+              : "";
+            card.innerHTML = `
+              <div>
+                <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+                <div class="job-company">${escapeHtml(job.Company || "N/A")}</div>
+                <div class="meta">
+                  <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+                  <span class="badge">Posted ${escapeHtml(job.Posted || "N/A")}</span>
+                  ${scoreHtml}
+                </div>
+              </div>
+              <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Open Job</a>
+            `;
+            groupNode.appendChild(card);
+          });
+        }
+        jobsWrap.appendChild(groupNode);
+      });
+    }
+
+    function renderJobs() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      let filtered = [...allJobs];
+
+      switch (currentSort) {
+        case "date-asc": filtered.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+        case "title": filtered.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+        case "company": filtered.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+        case "score": filtered.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+        case "date-desc":
+        default: filtered.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+      }
+
+      if (!filtered.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No Jobs For This View</h2><p>Try a wider posted age or different category.</p></section>";
+        return;
+      }
+
+      filtered.forEach((job, index) => {
+        const posted = job.Posted || "N/A";
+        const delay = Math.min(index * 22, 220);
+        const card = document.createElement("article");
+        card.className = "job";
+        card.style.animationDelay = `${delay}ms`;
+        const skills = (job.Skills || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 5);
+        const skillsHtml = skills.length
+          ? `<div class="skills-row">${skills.map(s => `<span class="skill-pill">${escapeHtml(s)}</span>`).join("")}</div>`
+          : "";
+        card.innerHTML = `
+          <div>
+            <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+            <div class="job-company">${escapeHtml(job.Company || "N/A")}</div>
+            <div class="meta">
+              <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+              <span class="badge">${escapeHtml(job.Experience || "")}</span>
+              <span class="badge">Posted ${escapeHtml(posted)}</span>
+              ${(job.MatchScore != null) ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${escapeHtml(job.MatchScore)}% match</span>` : ""}
+            </div>
+            ${skillsHtml}
+          </div>
+          <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Open Job</a>
+        `;
+        jobsWrap.appendChild(card);
+      });
+    }
+
+    function searchJobs(roleOverride, isQueued = false) {
+      const category = roleOverride || document.getElementById("category").value;
+      const city = document.getElementById("city").value;
+      const experience = document.getElementById("experience").value;
+      const limitVal = document.getElementById("limit") ? document.getElementById("limit").value : undefined;
+
+      if (!isQueued) {
+        const titles = getSuggestedRoles();
+        if (titles.length) {
+          runFullRoleQueue(titles);
+          return;
+        }
+      }
+
+      showOnly("stLoading");
+      document.getElementById("jobs").innerHTML = "";
+      document.getElementById("toolbar").style.display = "none";
+      document.getElementById("statsWrap").style.display = "none";
+      document.getElementById("searchBtn").disabled = true;
+      document.getElementById("dlBtn").disabled = true;
+      const catLabel = document.getElementById("category").selectedOptions[0].text;
+      document.getElementById("tbTitle").textContent = "Searching...";
+      document.getElementById("tbSub").textContent = `${catLabel} in ${city} | last 24 hours`;
+      setStatus("");
+
+      const params = new URLSearchParams({ role: category, city, experience });
+
+      fetch(`/search/${PORTAL}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById("searchBtn").disabled = false;
+
+          if (data.error) {
+            if (isQueued) {
+              resultsByRole[category] = { jobs: [] };
+              roleOrder.push(category);
+              renderRoleGroups();
+              roleQueueIndex += 1;
+              setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+              return;
+            }
+            showOnly("stWelcome");
+            document.getElementById("tbTitle").textContent = "Hirist Tech Job Finder";
+            document.getElementById("tbSub").textContent = "Pick a category and location to begin.";
+            setStatus(data.error, "err");
+            return;
+          }
+
+          let roleJobs = data.jobs || [];
+          if (isQueued) {
+            const uniqueJobs = [];
+            for (const job of roleJobs) {
+              const key = jobDedupKey(job);
+              if (seenJobKeys.has(key)) continue;
+              seenJobKeys.add(key);
+              job["Suggested Role"] = category;
+              uniqueJobs.push(job);
+            }
+            roleJobs = uniqueJobs;
+          }
+
+          scoreJobsIfResume(roleJobs).then((scoredJobs) => {
+            if (isQueued) {
+              resultsByRole[category] = { jobs: scoredJobs };
+              roleOrder.push(category);
+              renderRoleGroups();
+              roleQueueIndex += 1;
+              setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+              return;
+            }
+
+            allJobs = scoredJobs;
+            currentSort = "date-desc";
+            document.getElementById("sortSelect").value = "date-desc";
+
+            document.getElementById("tbTitle").textContent = catLabel;
+            document.getElementById("tbSub").textContent = `${allJobs.length} job(s) in ${city}`;
+            document.getElementById("statCount").textContent = `${allJobs.length} jobs`;
+            document.getElementById("statLoc").textContent = city;
+            document.getElementById("statsWrap").style.display = "flex";
+
+            if (!allJobs.length) {
+              showOnly("stEmpty");
+              setStatus("No jobs found for this combination.", "warn");
+              return;
+            }
+
+            showOnly("");
+            document.getElementById("toolbar").style.display = "flex";
+            document.getElementById("dlBtn").disabled = false;
+            document.getElementById("copyLinksBtn").disabled = false;
+            renderJobs();
+
+            setStatus(`Found ${allJobs.length} jobs.`, "ok");
+          });
+        })
+        .catch(() => {
+          if (isQueued) {
+            resultsByRole[category] = { jobs: [] };
+            roleOrder.push(category);
+            renderRoleGroups();
+            roleQueueIndex += 1;
+            setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+            return;
+          }
+          document.getElementById("searchBtn").disabled = false;
+          showOnly("stWelcome");
+          document.getElementById("tbTitle").textContent = "Hirist Tech Job Finder";
+          document.getElementById("tbSub").textContent = "Pick a category and location to begin.";
+          setStatus("Network error. Ensure Flask server is running.", "err");
+        });
+    }
+
+    function downloadExcel() { window.location = `/download/${PORTAL}`; }
+
+    function copyJobLinks() {
+      const queuedJobs = (typeof resultsByRole !== "undefined" && Object.keys(resultsByRole).length)
+        ? Object.values(resultsByRole).flatMap((r) => r.jobs)
+        : [];
+      const source = queuedJobs.length ? queuedJobs : (typeof allJobs !== "undefined" ? allJobs : []);
+      if (!source.length) {
+        setStatus("No jobs to copy yet — run a search first.", "err");
+        return;
+      }
+      const text = source
+        .map((job, i) => `${i + 1}) ${job.Link || job.Url || "N/A"}`)
+        .join("\n");
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus(`Copied ${source.length} job link(s) to clipboard.`, "ok"))
+        .catch(() => setStatus("Could not copy — clipboard permission denied.", "err"));
+    }
+
+    (function autofillFromResume() {
+      const raw = sessionStorage.getItem("resumeData");
+      if (!raw) return;
+      try {
+        const resume = JSON.parse(raw);
+        const titles = resume.suggested_job_titles || [];
+        if (!titles.length) return;
+        const roleInput = document.getElementById("category");
+        if (roleInput) roleInput.value = titles[0];
+        if (titles.length > 1 && roleInput) {
+          const container = roleInput.closest(".block") || roleInput.parentElement;
+          const chipRow = document.createElement("div");
+          chipRow.className = "suggested-titles";
+          chipRow.innerHTML = titles.map((t) => `<span class="title-chip" onclick="document.getElementById('category').value='${t.replace(/'/g, "\\'")}'">${t}</span>`).join("");
+          if (container) container.appendChild(chipRow);
+        }
+        try { autofillExperienceFromResume(resume); } catch (e) {}
+      } catch (e) {}
+    })();
+
+    function parseResumeDate(text) {
+      if (!text) return null;
+      const raw = String(text).trim();
+      const normalized = raw.replace(/\(.*\)/, "").trim();
+      const t = normalized.toLowerCase();
+      if (["present", "current", "ongoing", "now", "till date", "to date"].includes(t)) return new Date();
+      const monthYearMatch = normalized.match(/^[A-Za-z]+\s+\d{4}$/);
+      if (monthYearMatch) {
+        const parsed = new Date(`1 ${normalized}`);
+        if (!isNaN(parsed.getTime())) return parsed;
+      }
+      const parsed = new Date(normalized);
+      if (!isNaN(parsed.getTime())) return parsed;
+      const slashMatch = normalized.match(/^(\d{1,2})[\/\-](\d{4})$/);
+      if (slashMatch) {
+        const [_, month, year] = slashMatch;
+        const parsed2 = new Date(`${month}/01/${year}`);
+        return isNaN(parsed2.getTime()) ? null : parsed2;
+      }
+      return null;
+    }
+
+    function computeExperienceYearsClientSide(res) {
+      if (res == null) return null;
+      if (res.computed_experience_years != null) return res.computed_experience_years;
+      const experience = Array.isArray(res.experience) ? res.experience : [];
+      let totalDays = 0;
+      let parsedAny = false;
+      for (const exp of experience) {
+        const start = parseResumeDate(exp.start_date || exp.start || exp.from);
+        const end = parseResumeDate(exp.end_date || exp.end || exp.to) || new Date();
+        if (start && end && end > start) {
+          totalDays += (end - start) / (1000 * 60 * 60 * 24);
+          parsedAny = true;
+        }
+      }
+      return parsedAny ? Math.round((totalDays / 365.25) * 10) / 10 : null;
+    }
+
+    function autofillExperienceFromResume(resume) {
+      const years = computeExperienceYearsClientSide(resume);
+      if (years == null) {
+        console.warn("Could not determine candidate experience — leaving Experience filter on default.");
+        return;
+      }
+      const sel = document.getElementById('experience');
+      if (!sel) return;
+      const map = (y) => {
+        if (y < 1.5) return '0-1';
+        if (y < 3.5) return '2-3';
+        if (y < 6) return '4-6';
+        if (y < 10) return '7-10';
+        return '10+';
+      };
+      const band = map(years);
+      for (const opt of sel.options) {
+        if (opt.value === band) { sel.value = band; break; }
+      }
+    }
+  </script>
+</body>
+</html>

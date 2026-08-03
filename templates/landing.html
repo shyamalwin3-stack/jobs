@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Scout - Pick a Source</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="landing">
+    <div class="top-bar">
+      <div class="dev-credit">
+        <span class="dev-credit-label">Built by Rajath</span>
+        <a class="social-btn github"
+           href="https://github.com/rajath-0717"
+           target="_blank" rel="noopener noreferrer"
+           data-tip="See the developer on GitHub"
+           aria-label="See the developer on GitHub">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="currentColor" d="M12 .5C5.73.5.99 5.24.99 11.5c0 4.86 3.15 8.98 7.52 10.44.55.1.75-.24.75-.53 0-.26-.01-1.13-.02-2.05-3.06.66-3.71-1.3-3.71-1.3-.5-1.27-1.22-1.61-1.22-1.61-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.68 2.57 1.2 3.2.92.1-.71.38-1.2.69-1.48-2.44-.28-5.01-1.22-5.01-5.43 0-1.2.43-2.18 1.13-2.95-.11-.28-.49-1.4.11-2.92 0 0 .92-.3 3.02 1.13.88-.25 1.83-.37 2.77-.37.94 0 1.89.12 2.77.37 2.1-1.43 3.02-1.13 3.02-1.13.6 1.52.22 2.64.11 2.92.7.77 1.13 1.75 1.13 2.95 0 4.22-2.58 5.14-5.03 5.42.39.34.74 1 .74 2.02 0 1.46-.01 2.64-.01 3 0 .29.2.64.76.53A11.01 11.01 0 0 0 23.01 11.5C23.01 5.24 18.27.5 12 .5z"/>
+          </svg>
+        </a>
+        <a class="social-btn linkedin"
+           href="https://www.linkedin.com/in/rajath-shettigar-742111295/"
+           target="_blank" rel="noopener noreferrer"
+           data-tip="See the developer on LinkedIn"
+           aria-label="See the developer on LinkedIn">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.26 2.37 4.26 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
+          </svg>
+        </a>
+      </div>
+      <button class="theme-btn" id="themeBtn" type="button" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span class="theme-icon" id="themeIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+          </svg>
+        </span>
+        <span class="theme-label" id="themeLabel">Dark Mode</span>
+      </button>
+    </div>
+
+    <div class="landing-head">
+      <h1>Job <span>Scout</span></h1>
+      <p>Scrape recent job listings from your favorite portals &nbsp; | &nbsp; No login required.</p>
+    </div>
+
+    <div class="resume-upload-block">
+      <label for="resumeInput" class="resume-upload-btn">📄 Upload Resume (PDF)</label>
+      <input type="file" id="resumeInput" accept="application/pdf" style="display:none;" />
+      <div id="resumeStatus" class="resume-status"></div>
+      <div id="suggestedTitles" class="suggested-titles" style="display:none;"></div>
+    </div>
+
+    <div class="portal-grid">
+      <a class="portal-card linkedin" href="/linkedin">
+        <div class="logo">in</div>
+        <h2>LinkedIn Scraper</h2>
+        <p>Public LinkedIn job search with role, location, posted-within and apply-type filtering.</p>
+        <span class="pill">Open LinkedIn →</span>
+      </a>
+
+      <a class="portal-card glassdoor" href="/glassdoor">
+        <div class="logo">gd</div>
+        <h2>Glassdoor Scraper</h2>
+        <p>Scrape Glassdoor listings by city. Pick role, location, posted-age and apply preference.</p>
+        <span class="pill">Open Glassdoor →</span>
+      </a>
+
+      <a class="portal-card indeed" href="/indeed">
+        <div class="logo" style="background: linear-gradient(135deg, #2557a7, #4e7cd0);">id</div>
+        <h2>Indeed Scraper</h2>
+        <p>Scrape Indeed listings by city. Pick role, location, posted-age and apply preference.</p>
+        <span class="pill" style="color: #2557a7;">Open Indeed →</span>
+      </a>
+
+      <a class="portal-card hirist" href="/hirist">
+        <div class="logo" style="background: linear-gradient(135deg, #f5701c, #ff9a52);">ht</div>
+        <h2>Hirist Tech Scraper</h2>
+        <p>Category-based tech job search across DevOps, Backend, Frontend, Full Stack etc.</p>
+        <span class="pill" style="color: #f5701c;">Open Hirist →</span>
+      </a>
+
+<a class="portal-card naukri" href="/naukri">
+        <div class="logo" style="background: linear-gradient(135deg, #0079c1, #4aa9e0);">nk</div>
+        <h2>Naukri Scraper</h2>
+        <p>India's largest job portal. Free-text search with experience and posted-within filters.</p>
+        <span class="pill" style="color: #0079c1;">Open Naukri →</span>
+      </a>
+
+      <a class="portal-card foundit" href="/foundit">
+        <div class="logo" style="background: linear-gradient(135deg, #00a597, #2ecdb5);">fi</div>
+        <h2>Foundit Scraper</h2>
+        <p>Foundit (formerly Monster India) with rich experience-range, location and skill data.</p>
+        <span class="pill" style="color: #00a597;">Open Foundit →</span>
+      </a>
+
+      <a class="portal-card apna" href="/apna">
+        <div class="logo" style="background: linear-gradient(135deg, #0a8c70, #14b8a6); color: #facc15;">a</div>
+        <h2>Apna Scraper</h2>
+        <p>Apna.co — fastest scraper in JobScout. Salary bands & experience filters.</p>
+        <span class="pill" style="color: #0a8c70;">Open Apna →</span>
+      </a>
+
+      <a class="portal-card shine" href="/shine">
+        <div class="logo" style="background: linear-gradient(135deg, #7c3aed, #c026d3);">sh</div>
+        <h2>Shine Scraper</h2>
+        <p>Shine.com — plain-HTTP scrape with multi-band experience filter and date sort.</p>
+        <span class="pill" style="color: #7c3aed;">Open Shine →</span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const SUN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 4.5a1 1 0 0 1-1-1V1.5a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1zm0 18a1 1 0 0 1-1-1v-2a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1zM4.5 13a1 1 0 0 1-1-1H1.5a1 1 0 1 1 0-2h2a1 1 0 0 1 0 2zm18 0h-2a1 1 0 1 1 0-2h2a1 1 0 1 1 0 2zM6.34 7.76a1 1 0 0 1-.71-.29L4.22 6.05a1 1 0 1 1 1.41-1.41l1.41 1.41a1 1 0 0 1-.71 1.71zm12.02 12.02a1 1 0 0 1-.71-.29l-1.41-1.41a1 1 0 1 1 1.41-1.41l1.41 1.41a1 1 0 0 1-.71 1.71zM5.63 19.78a1 1 0 0 1-.71-1.71l1.41-1.41a1 1 0 1 1 1.41 1.41l-1.41 1.41a1 1 0 0 1-.71.29zm12.02-12.02a1 1 0 0 1-.71-1.71l1.41-1.41a1 1 0 1 1 1.41 1.41l-1.41 1.41a1 1 0 0 1-.71.29zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>';
+    const MOON_SVG = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>';
+    function updateThemeButton() {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.getElementById("themeLabel").textContent = dark ? "Light Mode" : "Dark Mode";
+      document.getElementById("themeIcon").innerHTML = dark ? SUN_SVG : MOON_SVG;
+    }
+    function toggleTheme() {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      localStorage.setItem("jobscout_theme", next);
+      updateThemeButton();
+    }
+    (function initTheme() {
+      const saved = localStorage.getItem("jobscout_theme");
+      if (saved === "dark" || saved === "light") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+      updateThemeButton();
+    })();
+
+    document.getElementById("resumeInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const statusEl = document.getElementById("resumeStatus");
+      statusEl.textContent = "Parsing resume...";
+
+      const formData = new FormData();
+      formData.append("resume", file);
+
+      try {
+        const res = await fetch("/upload-resume", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+          statusEl.textContent = `Error: ${data.error}`;
+          return;
+        }
+
+        sessionStorage.setItem("resumeData", JSON.stringify(data));
+        statusEl.textContent = `Resume parsed: ${data.name || "candidate"}`;
+
+        const titles = data.suggested_job_titles || [];
+        const wrap = document.getElementById("suggestedTitles");
+        wrap.style.display = titles.length ? "flex" : "none";
+        wrap.innerHTML = titles.map((t) => `<span class="title-chip">${t}</span>`).join("");
+      } catch (err) {
+        statusEl.textContent = "Upload failed. Check the server is running.";
+      }
+    });
+  </script>
+</body>
+</html>

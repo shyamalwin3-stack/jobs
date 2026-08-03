@@ -1,0 +1,153 @@
+{
+  "name": "ALWIN SHYAM F",
+  "email": "alwinshyam21@gmail.com",
+  "phone": "+91 6380255310",
+  "location": null,
+  "linkedin": "linkedin.com/in/alwin-shyam",
+  "github": "github.com/Alwinshyam",
+  "portfolio": null,
+  "summary": "Results-driven Full Stack Developer with 10+ months of hands-on experience designing and delivering scalable, secure web applications. Proficient in React.js, Node.js, Express.js, MongoDB, Firebase, and Generative AI integration. Demonstrated expertise in RESTful API development, real-time WebSocket systems, JWT authentication, AI-powered features, and Agile/SCRUM methodologies. Passionate about clean architecture, OWASP-compliant secure coding, and building production-ready applications with exceptional user experience.",
+  "skills": [
+    "JavaScript (ES6+)",
+    "Python",
+    "HTML5",
+    "CSS3",
+    "SQL",
+    "React.js",
+    "React Hooks",
+    "React Router",
+    "Bootstrap",
+    "Responsive Design",
+    "State Management",
+    "Node.js",
+    "Express.js",
+    "REST API Design",
+    "WebSockets",
+    "JWT Authentication",
+    "Middleware",
+    "MongoDB",
+    "Firebase Realtime Database",
+    "Firestore",
+    "Firebase Storage",
+    "MySQL",
+    "Firebase (Auth, Storage, Firestore)",
+    "Basic AWS",
+    "Git",
+    "Postman",
+    "VS Code",
+    "IntelliJ IDEA",
+    "Playwright (JavaScript)",
+    "Unit Testing",
+    "Debugging",
+    "LLM Integration",
+    "Chatbot Development",
+    "Prompt Engineering",
+    "AI-powered Features",
+    "Agile/SCRUM",
+    "SDLC",
+    "Code Reviews",
+    "OWASP Security Guidelines",
+    "CI/CD",
+    "OTP Authentication",
+    "Secure Coding Principles",
+    "Data Protection",
+    "Role-Based Access Control",
+    "Full Stack Development",
+    "REST API",
+    "Playwright Automation",
+    "Generative AI Integration",
+    "OWASP",
+    "Component Architecture",
+    "Database Design",
+    "Cloud Deployment"
+  ],
+  "education": [
+    {
+      "degree": "B.E. — Computer Science and Engineering",
+      "institution": "National Engineering College, Kovilpatti",
+      "location": "Kovilpatti",
+      "start_date": "Aug 2021",
+      "end_date": "Apr 2024",
+      "gpa": "7.24 / 10"
+    }
+  ],
+  "experience": [
+    {
+      "job_title": "Software Test Engineer - Trainee",
+      "company": "Medverve Healthcare Pvt. Ltd.",
+      "location": null,
+      "start_date": "Sep 2025",
+      "end_date": "Present (10 months)",
+      "responsibilities": [
+        "Developed and tested React.js-based healthcare web applications; gained hands-on experience in both frontend development and quality assurance with focus on code quality, test automation, and user experience validation.",
+        "Collaborated with cross-functional teams (QA, design, product) through full SDLC — requirements analysis, design, development, test design, test execution, debugging, and documentation.",
+        "Developed React.js components and backend features; implemented form validation, error handling, and responsive UI design while ensuring code quality and testability.",
+        "Performed comprehensive testing and debugging of frontend/backend issues; gained understanding of root cause analysis, issue resolution, and following quality assurance and secure coding best practices.",
+        "Participated in code reviews and testing cycles; built expertise in test case design, automation frameworks, API testing, secure testing principles, and OWASP security guidelines.",
+        "Created test documentation, quality reports, and technical documentation; learned best practices for test automation, integration testing, and production deployment."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Freelance CRM System",
+      "description": "Architected and built a production-ready CRM web application for freelance client/lead/project management with role-based access control (admin/user). Developed RESTful Express.js backend with JWT authentication middleware, bcrypt password hashing, and MongoDB schemas for users, clients, leads, and tasks. Built React.js frontend with dashboard KPIs (total clients, leads, tasks, revenue), client management, lead pipeline (new → contacted → converted → lost), and task tracker. Implemented search/filter functionality, notes per client/lead, and responsive UI using React Hooks and React Router for full mobile/desktop compatibility. Structured project with clean separation of concerns (controllers, routes, models, middleware) for easy SaaS extensibility and future multi-tenancy support.",
+      "technologies": [
+        "React.js",
+        "Node.js",
+        "Express.js",
+        "MongoDB",
+        "JWT"
+      ]
+    },
+    {
+      "name": "CQC Portal",
+      "description": "Led full-stack development of a claim processing portal applying design thinking and OWASP-compliant secure coding throughout. Engineered real-time claim locking system using WebSockets to prevent concurrent access conflicts across distributed users. Implemented Firebase Authentication (OTP-based email login) and Firebase Storage for secure, scalable document management. Integrated Generative AI for intelligent claim summary generation, automated data extraction, and quality check recommendations. Developed document upload/retrieval and automated letter generation; authored end-user and technical documentation.",
+      "technologies": [
+        "React.js",
+        "Firebase",
+        "MongoDB",
+        "WebSockets",
+        "REST APIs",
+        "Generative AI"
+      ]
+    },
+    {
+      "name": "Pre-Authorization Management Application",
+      "description": "Architected responsive React.js frontend for managing pre-authorization requests with real-time approval/rejection status updates. Integrated secure REST APIs for seamless data exchange; implemented Firebase Authentication for secure user login and session management. Developed WebSocket-based real-time notification system providing instant status alerts on authorization decisions. Applied responsive design patterns and UX best practices to optimize user engagement across desktop and mobile devices.",
+      "technologies": [
+        "React.js",
+        "Firebase",
+        "WebSockets",
+        "REST APIs"
+      ]
+    },
+    {
+      "name": "Trade2Cart",
+      "description": "Designed and developed a multi-module e-commerce marketplace with component-based React.js architecture for scalability and maintainability. Implemented core features: product listing, city-based filtering, advanced search, category management, cart, and order management modules. Integrated AI-powered chatbot using Generative AI for customer support, product recommendations, and order assistance. Simulated backend operations using mock REST APIs demonstrating solid understanding of API integration, data flow, and state management patterns.",
+      "technologies": [
+        "React.js",
+        "Mock APIs",
+        "State Management",
+        "Generative AI Chatbot"
+      ]
+    }
+  ],
+  "certifications": [],
+  "languages": [
+    "JavaScript (ES6+)",
+    "Python",
+    "HTML5",
+    "CSS3",
+    "SQL"
+  ],
+  "achievements": [],
+  "suggested_job_titles": [
+    "Full Stack Developer",
+    "MERN Stack Developer",
+    "React.js Developer",
+    "Node.js Developer",
+    "Software Engineer",
+    "AI Integration Developer"
+  ]
+}

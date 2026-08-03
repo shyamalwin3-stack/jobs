@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Job Finder</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="linkedin">
+  <div class="shell">
+    <aside class="panel sidebar">
+      <div class="header">
+        <div class="brand-row">
+          <div class="brand">Linked<span class="accent-blue">Scout</span></div>
+          <div style="display:flex;gap:6px;">
+            <a class="back-link" href="/">← Home</a>
+            <button class="theme-btn" id="themeBtn" type="button" onclick="toggleTheme()">Dark Mode</button>
+          </div>
+        </div>
+        <div class="tagline">Public LinkedIn job search — no login required.</div>
+      </div>
+
+      <div class="form-body">
+        <div class="block">
+          <label class="label" for="role">Job Role</label>
+          <input id="role" type="text" placeholder="Product Manager, Data Analyst, DevOps..." />
+        </div>
+
+        <div class="block">
+          <div class="label">Locations</div>
+          <div class="grid2">
+            <div class="chip"><input type="checkbox" id="l1" value="Bengaluru" /><label for="l1">Bengaluru</label></div>
+            <div class="chip"><input type="checkbox" id="l2" value="Hyderabad" /><label for="l2">Hyderabad</label></div>
+            <div class="chip"><input type="checkbox" id="l3" value="Chennai" /><label for="l3">Chennai</label></div>
+            <div class="chip"><input type="checkbox" id="l4" value="Mumbai" /><label for="l4">Mumbai</label></div>
+            <div class="chip"><input type="checkbox" id="l5" value="Pune" /><label for="l5">Pune</label></div>
+            <div class="chip"><input type="checkbox" id="l6" value="Delhi" /><label for="l6">Delhi</label></div>
+            <div class="chip"><input type="checkbox" id="l7" value="Noida" /><label for="l7">Noida</label></div>
+            <div class="chip"><input type="checkbox" id="l8" value="Gurugram" /><label for="l8">Gurugram</label></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <label class="label" for="applyMode">Apply Preference</label>
+          <select id="applyMode">
+            <option value="include_easy" selected>Both Easy Apply and External Jobs</option>
+            <option value="only_easy">Only Easy Apply jobs</option>
+            <option value="only_external">Only External jobs</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="foot">
+        <button id="searchBtn" class="search-btn" type="button" onclick="searchJobs()">Search Jobs</button>
+        <div id="statusMsg" class="status"></div>
+      </div>
+    </aside>
+
+    <main class="panel main">
+      <div class="topbar">
+        <div>
+          <div class="title" id="tbTitle">LinkedIn Job Finder</div>
+          <div class="subtitle" id="tbSub">Use the left panel to run your search.</div>
+        </div>
+        <div class="stats" id="statsWrap" style="display:none;">
+          <div class="stat" id="statCount">0 jobs</div>
+          <div class="stat" id="statLoc">0 locations</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="toolbar" id="toolbar">
+          <button class="quick-btn active" type="button" data-filter="all" onclick="setFilter('all', this)">All</button>
+          <button class="quick-btn" type="button" data-filter="easy" onclick="setFilter('easy', this)">Easy Apply</button>
+          <button class="quick-btn" type="button" data-filter="external" onclick="setFilter('external', this)">External</button>
+          <select id="sortSelect" onchange="setSort(this.value)" style="margin-left: auto; max-width: 190px;">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="title">Job Title (A-Z)</option>
+            <option value="company">Company (A-Z)</option>
+            <option value="score">Sort by Match Score</option>
+          </select>
+          <button id="dlBtn" class="download-btn" type="button" onclick="downloadExcel()" disabled>Download Excel</button>
+          <button id="copyLinksBtn" class="secondary-btn" type="button" onclick="copyJobLinks()" disabled>📋 Copy Links</button>
+        </div>
+
+        <section id="stWelcome" class="state">
+          <h2>Find Better LinkedIn Leads</h2>
+          <p>Search by role, location, posted-within window and apply preference.</p>
+        </section>
+
+        <section id="stLoading" class="state" style="display:none;">
+          <div class="loading"></div>
+          <h2>Searching LinkedIn</h2>
+          <p>Launching browser automation and collecting recent openings. This can take a few seconds.</p>
+        </section>
+
+        <section id="stEmpty" class="state" style="display:none;">
+          <h2>No Matching Jobs</h2>
+          <p>Try wider time range, more locations, or a broader role keyword.</p>
+        </section>
+
+        <div class="jobs" id="jobs"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const TIME_LABELS = {
+      "1800": "30 min", "3600": "1 hour", "10800": "3 hours",
+      "36000": "10 hours", "86400": "24 hours", "259200": "3 days", "604800": "7 days",
+    };
+    const PORTAL = "linkedin";
+
+    let allJobs = [];
+    let currentFilter = "all";
+    let currentSort = "date-desc";
+
+    function getLocs() {
+      return [...document.querySelectorAll('input[id^="l"]:checked')].map((c) => c.value);
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function setStatus(message, cls = "") {
+      const el = document.getElementById("statusMsg");
+      el.textContent = message;
+      el.className = `status ${cls}`;
+    }
+
+    function showOnly(id) {
+      ["stWelcome", "stLoading", "stEmpty"].forEach((s) => {
+        document.getElementById(s).style.display = s === id ? "block" : "none";
+      });
+    }
+
+    function updateThemeButton() {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.getElementById("themeBtn").textContent = dark ? "Light Mode" : "Dark Mode";
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      localStorage.setItem("jobscout_theme", next);
+      updateThemeButton();
+    }
+
+    (function initTheme() {
+      const saved = localStorage.getItem("jobscout_theme");
+      if (saved === "dark" || saved === "light") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+      updateThemeButton();
+    })();
+
+    function scoreJobsIfResume(jobs) {
+      const resumeRaw = sessionStorage.getItem("resumeData");
+      if (!resumeRaw || !jobs.length) return Promise.resolve(jobs);
+      setStatus("Scoring jobs against your resume...");
+      return fetch("/score-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: JSON.parse(resumeRaw), jobs }),
+      })
+        .then((res) => res.json())
+        .then((data) => (data.error ? jobs : data.jobs))
+        .catch(() => jobs);
+    }
+
+    function normalizedApplyType(job) {
+      return (job["Apply Type"] || (job["Easy Apply"] ? "Easy Apply" : "External")).toLowerCase();
+    }
+
+    function setFilter(type, buttonEl) {
+      currentFilter = type;
+      document.querySelectorAll(".quick-btn[data-filter]").forEach((btn) => btn.classList.remove("active"));
+      buttonEl.classList.add("active");
+      renderJobs();
+    }
+
+    function setSort(value) { currentSort = value; renderJobs(); }
+
+    function badgeForApplyType(type) {
+      if (type.includes("easy")) return '<span class="badge easy">Easy Apply</span>';
+      return '<span class="badge external">External</span>';
+    }
+
+    function renderJobs() {
+      const jobsWrap = document.getElementById("jobs");
+      jobsWrap.innerHTML = "";
+      let filtered = [...allJobs];
+
+      if (currentFilter !== "all") {
+        filtered = filtered.filter((job) => {
+          const type = normalizedApplyType(job);
+          if (currentFilter === "easy") return type.includes("easy");
+          if (currentFilter === "external") return type.includes("external") || type.includes("company");
+          return true;
+        });
+      }
+
+      switch (currentSort) {
+        case "date-asc": filtered.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+        case "title": filtered.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+        case "company": filtered.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+        case "score": filtered.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+        case "date-desc":
+        default: filtered.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+      }
+
+      if (!filtered.length) {
+        jobsWrap.innerHTML = "<section class='state'><h2>No Jobs For This View</h2><p>Try changing quick filters or run a broader search.</p></section>";
+        return;
+      }
+
+      filtered.forEach((job, index) => {
+        const posted = job.Posted || "N/A";
+        const applyType = normalizedApplyType(job);
+        const delay = Math.min(index * 22, 220);
+        const scoreHtml = (job.MatchScore != null)
+          ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${job.MatchScore}% match</span>`
+          : "";
+        const card = document.createElement("article");
+        card.className = "job";
+        card.style.animationDelay = `${delay}ms`;
+        card.innerHTML = `
+          <div>
+            <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+            <div class="job-company">${escapeHtml(job.Company)}</div>
+            <div class="meta">
+              <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+              <span class="badge">Posted ${escapeHtml(posted)}</span>
+              ${badgeForApplyType(applyType)}
+              ${scoreHtml}
+            </div>
+          </div>
+          <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Open Job</a>
+        `;
+        jobsWrap.appendChild(card);
+      });
+    }
+
+    let roleQueue = [];
+    let roleQueueIndex = 0;
+    let resultsByRole = {};
+    let roleOrder = [];
+    let seenJobKeys = new Set();
+    const ROLE_QUEUE_DELAY_MS = 700;
+
+    function getSuggestedRoles() {
+      try {
+        const raw = sessionStorage.getItem("resumeData");
+        if (!raw) return [];
+        const resume = JSON.parse(raw);
+        return Array.isArray(resume.suggested_job_titles) ? resume.suggested_job_titles.filter(Boolean) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function jobDedupKey(job) {
+      const link = (job.Link || "").trim().toLowerCase();
+      if (link) return `link:${link}`;
+      const company = (job.Company || "").trim().toLowerCase();
+      const title = (job["Job Title"] || "").trim().toLowerCase();
+      return `ct:${company}::${title}`;
+    }
+
+    function runFullRoleQueue(titles) {
+      roleQueue = [...titles];
+      roleQueueIndex = 0;
+      resultsByRole = {};
+      roleOrder = [];
+      seenJobKeys = new Set();
+      document.getElementById("jobs").innerHTML = "";
+      document.getElementById("toolbar").style.display = "none";
+      document.getElementById("statsWrap").style.display = "none";
+      document.getElementById("searchBtn").disabled = true;
+      document.getElementById("dlBtn").disabled = true;
+      document.getElementById("copyLinksBtn").disabled = true;
+      renderRoleGroups();
+      runNextRoleInQueue();
+    }
+
+    function runNextRoleInQueue() {
+      if (roleQueueIndex >= roleQueue.length) {
+        finishRoleQueue();
+        return;
+      }
+      const role = roleQueue[roleQueueIndex];
+      document.getElementById("role").value = role;
+      setStatus(`Searching "${role}" (${roleQueueIndex + 1} of ${roleQueue.length})...`, "");
+      searchJobs(role, true);
+    }
+
+    function finishRoleQueue() {
+      document.getElementById("searchBtn").disabled = false;
+      const totalJobs = Object.values(resultsByRole).reduce((sum, r) => sum + r.jobs.length, 0);
+      document.getElementById("copyLinksBtn").disabled = totalJobs === 0;
+      setStatus(`Done — ${roleOrder.length} roles searched, ${totalJobs} unique jobs.`, "ok");
+      renderSummaryBar(roleOrder.length, totalJobs);
+    }
+
+    function renderSummaryBar(roleCount, totalJobs) {
+      let bar = document.getElementById("queueSummary");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "queueSummary";
+        bar.className = "queue-summary";
+        const content = document.querySelector(".content");
+        if (content) content.insertBefore(bar, document.getElementById("jobs"));
+      }
+      bar.textContent = `${roleCount} roles searched · ${totalJobs} unique jobs · last 24 hours`;
+    }
+
+    function renderRoleGroups() {
+      const groups = document.getElementById("jobs");
+      if (!groups) return;
+      groups.innerHTML = "";
+      if (!roleOrder.length) {
+        groups.innerHTML = "<section class='state'><h2>No jobs have been grouped yet.</h2><p>Run Search to collect suggested roles.</p></section>";
+        return;
+      }
+
+      roleOrder.forEach((role) => {
+        const groupData = resultsByRole[role] || { jobs: [] };
+        const groupNode = document.createElement("div");
+        groupNode.className = "role-group";
+        const header = document.createElement("div");
+        header.className = "role-group-header";
+        const title = document.createElement("h3");
+        title.textContent = `${role} — ${groupData.jobs.length} job(s)`;
+        const stats = document.createElement("div");
+        stats.className = "role-group-stats";
+        stats.textContent = `Queued role ${roleQueue.indexOf(role) + 1} of ${roleQueue.length}`;
+        header.appendChild(title);
+        header.appendChild(stats);
+        groupNode.appendChild(header);
+
+        if (!groupData.jobs.length) {
+          const emptyState = document.createElement("section");
+          emptyState.className = "state";
+          emptyState.innerHTML = "<h2>No jobs found for this role.</h2><p>Try a broader keyword or different filters.</p>";
+          groupNode.appendChild(emptyState);
+        } else {
+          const sortedJobs = [...groupData.jobs];
+          switch (currentSort) {
+            case "date-asc": sortedJobs.sort((a, b) => (a.Posted || "").localeCompare(b.Posted || "")); break;
+            case "title": sortedJobs.sort((a, b) => (a["Job Title"] || "").localeCompare(b["Job Title"] || "")); break;
+            case "company": sortedJobs.sort((a, b) => (a.Company || "").localeCompare(b.Company || "")); break;
+            case "score": sortedJobs.sort((a, b) => (b.MatchScore || 0) - (a.MatchScore || 0)); break;
+            case "date-desc":
+            default: sortedJobs.sort((a, b) => (b.Posted || "").localeCompare(a.Posted || "")); break;
+          }
+          sortedJobs.forEach((job, index) => {
+            const card = document.createElement("article");
+            card.className = "job";
+            card.style.animationDelay = `${Math.min(index * 22, 220)}ms`;
+            const scoreHtml = (job.MatchScore != null)
+              ? `<span class="badge score-badge" title="${escapeHtml(job.MatchReason || "")}">${job.MatchScore}% match</span>`
+              : "";
+            card.innerHTML = `
+              <div>
+                <div class="job-title">${escapeHtml(job["Job Title"])}</div>
+                <div class="job-company">${escapeHtml(job.Company || "N/A")}</div>
+                <div class="meta">
+                  <span class="badge">${escapeHtml(job.Location || "Unknown")}</span>
+                  <span class="badge">Posted ${escapeHtml(job.Posted || "N/A")}</span>
+                  ${scoreHtml}
+                </div>
+              </div>
+              <a class="apply" href="${escapeHtml(job.Link)}" target="_blank" rel="noopener noreferrer">Apply</a>
+            `;
+            groupNode.appendChild(card);
+          });
+        }
+        groups.appendChild(groupNode);
+      });
+    }
+
+    function isResumeQueueEnabled() {
+      const raw = sessionStorage.getItem("resumeData");
+      if (!raw) return false;
+      try {
+        const resume = JSON.parse(raw);
+        return Array.isArray(resume.suggested_job_titles) && resume.suggested_job_titles.length > 0;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function searchJobs(roleOverride, isQueued = false) {
+      const role = roleOverride || document.getElementById("role").value.trim();
+      const locs = getLocs();
+      const applyMode = document.getElementById("applyMode").value;
+
+      if (!role) { setStatus("Enter a job role.", "err"); return; }
+      if (!locs.length) { setStatus("Select at least one location.", "err"); return; }
+
+      if (!isQueued) {
+        const titles = getSuggestedRoles();
+        if (titles.length) {
+          runFullRoleQueue(titles);
+          return;
+        }
+      }
+
+      if (!isQueued) {
+        showOnly("stLoading");
+        document.getElementById("jobs").innerHTML = "";
+        document.getElementById("toolbar").style.display = "none";
+        document.getElementById("statsWrap").style.display = "none";
+        document.getElementById("searchBtn").disabled = true;
+        document.getElementById("dlBtn").disabled = true;
+        document.getElementById("copyLinksBtn").disabled = true;
+        document.getElementById("tbTitle").textContent = "Searching...";
+        document.getElementById("tbSub").textContent = `${role} | last 24 hours`;
+        setStatus("");
+      }
+
+      const params = new URLSearchParams({ role, apply_mode: applyMode });
+      locs.forEach((l) => params.append("locations", l));
+
+      try {
+        const res = await fetch(`/search/${PORTAL}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString(),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          if (isQueued) {
+            resultsByRole[role] = { jobs: [] };
+            roleOrder.push(role);
+            renderRoleGroups();
+            roleQueueIndex += 1;
+            setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+            return;
+          }
+          showOnly("stWelcome");
+          document.getElementById("searchBtn").disabled = false;
+          setStatus(data.error, "err");
+          return;
+        }
+
+        let roleJobs = data.jobs || [];
+        if (isQueued) {
+          const uniqueJobs = [];
+          for (const job of roleJobs) {
+            const key = jobDedupKey(job);
+            if (seenJobKeys.has(key)) continue;
+            seenJobKeys.add(key);
+            job["Suggested Role"] = role;
+            uniqueJobs.push(job);
+          }
+          roleJobs = uniqueJobs;
+        }
+
+        roleJobs = await scoreJobsIfResume(roleJobs);
+
+        if (isQueued) {
+          resultsByRole[role] = { jobs: roleJobs };
+          roleOrder.push(role);
+          renderRoleGroups();
+          roleQueueIndex += 1;
+          setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+          return;
+        }
+
+        allJobs = roleJobs;
+        document.getElementById("tbTitle").textContent = role;
+        document.getElementById("tbSub").textContent = `${allJobs.length} job(s) | last 24 hours`;
+        document.getElementById("statCount").textContent = `${allJobs.length} jobs`;
+        document.getElementById("statLoc").textContent = locs.join(", ");
+        document.getElementById("statsWrap").style.display = "flex";
+        document.getElementById("toolbar").style.display = "flex";
+        document.getElementById("dlBtn").disabled = false;
+        document.getElementById("copyLinksBtn").disabled = false;
+        document.getElementById("searchBtn").disabled = false;
+        renderJobs();
+      } catch (error) {
+        if (isQueued) {
+          resultsByRole[role] = { jobs: [] };
+          roleOrder.push(role);
+          renderRoleGroups();
+          roleQueueIndex += 1;
+          setTimeout(runNextRoleInQueue, ROLE_QUEUE_DELAY_MS);
+          return;
+        }
+        showOnly("stWelcome");
+        document.getElementById("searchBtn").disabled = false;
+        setStatus("Network error. Ensure Flask server is running.", "err");
+      }
+    }
+
+    function downloadExcel() { window.location = `/download/${PORTAL}`; }
+
+    function copyJobLinks() {
+      const queuedJobs = (typeof resultsByRole !== "undefined" && Object.keys(resultsByRole).length)
+        ? Object.values(resultsByRole).flatMap((r) => r.jobs)
+        : [];
+      const source = queuedJobs.length ? queuedJobs : (typeof allJobs !== "undefined" ? allJobs : []);
+      if (!source.length) {
+        setStatus("No jobs to copy yet — run a search first.", "err");
+        return;
+      }
+      const text = source
+        .map((job, i) => `${i + 1}) ${job.Link || job.Url || "N/A"}`)
+        .join("\n");
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus(`Copied ${source.length} job link(s) to clipboard.`, "ok"))
+        .catch(() => setStatus("Could not copy — clipboard permission denied.", "err"));
+    }
+
+    (function autofillFromResume() {
+      const raw = sessionStorage.getItem("resumeData");
+      if (!raw) return;
+      try {
+        const resume = JSON.parse(raw);
+        const titles = resume.suggested_job_titles || [];
+        if (!titles.length) return;
+        const roleInput = document.getElementById("role");
+        if (roleInput) roleInput.value = titles[0];
+        if (titles.length > 1 && roleInput) {
+          const chipRow = document.createElement("div");
+          chipRow.className = "suggested-titles";
+          chipRow.innerHTML = titles.map((t) => `<span class="title-chip" onclick="document.getElementById('role').value='${t.replace(/'/g, "\\'")}'">${t}</span>`).join("");
+          roleInput.closest(".block").appendChild(chipRow);
+        }
+      } catch (e) {}
+    })();
+
+    document.getElementById("role").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchJobs();
+    });
+  </script>
+</body>
+</html>
