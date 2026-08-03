@@ -6,3 +6,4 @@ openpyxl
 python-dotenv
 python-dateutil
 requests
+pdfplumber
